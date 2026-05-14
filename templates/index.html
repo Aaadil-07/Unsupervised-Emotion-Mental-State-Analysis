@@ -866,13 +866,13 @@
                                     x *= 2; y *= 2; w *= 2; h *= 2;
                                     
                                     const colors = {
-                                        "Happy":     "rgb(0, 215, 255)",
+                                        "Happy":     "rgb(255, 215, 0)",
                                         "Calm":      "rgb(80, 200, 80)",
                                         "Neutral":   "rgb(180, 180, 180)",
-                                        "Sad":       "rgb(200, 80, 80)",
-                                        "Stressed":  "rgb(50, 150, 255)",
-                                        "Angry":     "rgb(50, 50, 244)",
-                                        "Surprised": "rgb(200, 64, 224)"
+                                        "Sad":       "rgb(80, 80, 200)",
+                                        "Stressed":  "rgb(255, 150, 50)",
+                                        "Angry":     "rgb(244, 50, 50)",
+                                        "Surprised": "rgb(224, 64, 200)"
                                     };
                                     overlayCtx.strokeStyle = colors[data.emotion] || "rgb(0, 230, 180)";
                                     overlayCtx.lineWidth = 3;
