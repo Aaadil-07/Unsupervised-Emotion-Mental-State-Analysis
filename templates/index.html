@@ -798,8 +798,8 @@
         const hiddenVideo = document.createElement('video');
         hiddenVideo.autoplay = true;
         const hiddenCanvas = document.createElement('canvas');
-        hiddenCanvas.width = 640;
-        hiddenCanvas.height = 480;
+        hiddenCanvas.width = 320;
+        hiddenCanvas.height = 240;
         const ctx = hiddenCanvas.getContext('2d');
 
         async function toggleScan() {
@@ -829,8 +829,8 @@
 
                         const sendFrame = () => {
                             if (ws.readyState === WebSocket.OPEN && hiddenVideo.readyState >= 2 && isRunning) {
-                                ctx.drawImage(hiddenVideo, 0, 0, 640, 480);
-                                const dataUrl = hiddenCanvas.toDataURL('image/jpeg', 0.4); // lower quality = much faster network
+                                ctx.drawImage(hiddenVideo, 0, 0, 320, 240);
+                                const dataUrl = hiddenCanvas.toDataURL('image/jpeg', 0.5); // lower resolution & quality
                                 ws.send(dataUrl);
                             }
                         };

@@ -257,7 +257,7 @@ async def websocket_endpoint(websocket: WebSocket):
     S.tracker = EmotionTracker(window_size=10)
     frames = 0
     last_t = time.time()
-    skip = 5  # Increased skip to save CPU
+    skip = 10  # Predict emotion once every 10 frames
     last_bbox = None
     try:
         while True:
