@@ -825,18 +825,26 @@
                         badge.textContent = 'LIVE: SYNCED';
                         badge.classList.remove('stopped');
 
-                        pollInterval = setInterval(() => {
-                            if (ws.readyState === WebSocket.OPEN && hiddenVideo.readyState >= 2) {
+                        pollInterval = setInterval(fetchState, 500);
+
+                        const sendFrame = () => {
+                            if (ws.readyState === WebSocket.OPEN && hiddenVideo.readyState >= 2 && isRunning) {
                                 ctx.drawImage(hiddenVideo, 0, 0, 640, 480);
-                                const dataUrl = hiddenCanvas.toDataURL('image/jpeg', 0.6);
+                                const dataUrl = hiddenCanvas.toDataURL('image/jpeg', 0.4); // lower quality = much faster network
                                 ws.send(dataUrl);
                             }
-                            fetchState();
-                        }, 100);
-                    };
+                        };
+                        
+                        // Trigger the first frame
+                        setTimeout(sendFrame, 500); // give camera a sec to warm up
 
-                    ws.onmessage = (event) => {
-                        document.getElementById('video-feed').src = event.data;
+                        ws.onmessage = (event) => {
+                            document.getElementById('video-feed').src = event.data;
+                            // Only send the NEXT frame after we get the PREVIOUS one back to prevent lag/queuing
+                            if (isRunning) {
+                                requestAnimationFrame(sendFrame);
+                            }
+                        };
                     };
 
                     ws.onclose = () => {

@@ -257,7 +257,8 @@ async def websocket_endpoint(websocket: WebSocket):
     S.tracker = EmotionTracker(window_size=10)
     frames = 0
     last_t = time.time()
-    skip = 3
+    skip = 5  # Increased skip to save CPU
+    last_bbox = None
     try:
         while True:
             data = await websocket.receive_text()
@@ -277,6 +278,7 @@ async def websocket_endpoint(websocket: WebSocket):
             info = None
             if S.fc % skip == 0:
                 info = predict_frame(frame)
+                last_bbox = get_face_bbox(frame)  # Only run heavy face detection here
                 
             if info:
                 S.emotion = info["emotion"]
@@ -287,7 +289,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 S.tracker.update(S.cluster, S.emotion, S.state, S.alert)
                 S.emotion = S.tracker.smoothed_emotion()
 
-            bbox = get_face_bbox(frame)
+            bbox = last_bbox
             emo_col_bgr = {
                 "Happy":     (0,   215, 255),
                 "Calm":      (80,  200, 80),
