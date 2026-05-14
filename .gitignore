@@ -1,0 +1,19 @@
+# Environments
+venv/
+venv311/
+.env
+
+# Cache
+__pycache__/
+*.pyc
+
+# Data
+datasets/
+dataset2/
+final_dataset/
+logs/
+plots/
+
+# OS files
+.DS_Store
+Thumbs.db

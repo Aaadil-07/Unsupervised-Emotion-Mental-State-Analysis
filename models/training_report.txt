@@ -1,0 +1,9 @@
+Unsupervised Emotion Analysis — Training Report
+=======================================================
+
+Images processed    : 34975
+Training time       : 808.6s
+AE reconstruction   : 0.007501 MSE
+Best K (silhouette) : 2
+Final K used        : 7
+
