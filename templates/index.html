@@ -133,50 +133,200 @@
             position: relative;
         }
 
-        /* TOP NAV */
+        /* TOP NAV CYBERPUNK REDESIGN */
         .top-nav {
-            height: 70px;
-            border-bottom: 1px solid var(--border-color);
+            height: 80px;
+            border-bottom: 1px solid rgba(0, 229, 255, 0.3);
+            box-shadow: 0 4px 20px rgba(0, 229, 255, 0.05);
             display: flex;
             align-items: center;
-            padding: 0 40px;
+            padding: 0 30px;
             justify-content: space-between;
-            background-color: var(--bg-color);
+            background: rgba(11, 12, 16, 0.85); /* deep navy / matte black */
+            backdrop-filter: blur(12px); /* glassmorphism */
             position: sticky;
             top: 0;
-            z-index: 5;
+            z-index: 50;
+        }
+        .top-nav::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            width: 100%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--cyan), transparent);
+            box-shadow: 0 0 10px var(--cyan);
         }
 
+        /* Left Section */
+        .nav-left {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .nav-logo-row {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+        }
         .logo {
             font-family: 'Orbitron', sans-serif;
-            font-size: 24px;
+            font-size: 20px;
             font-weight: 700;
             color: var(--cyan);
-            text-shadow: 0 0 10px var(--cyan-glow);
+            text-shadow: 0 0 8px var(--cyan-glow);
             letter-spacing: 2px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .logo-subtitle {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 10px;
+            color: var(--text-muted);
+            letter-spacing: 1px;
+            margin-top: 2px;
+        }
+        .logo-version {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 9px;
+            color: var(--cyan);
+            opacity: 0.7;
         }
 
+        /* Center Section */
         .top-links {
             display: flex;
-            gap: 30px;
+            gap: 24px;
+            align-items: center;
+            height: 100%;
         }
 
         .top-link {
             color: var(--text-muted);
             text-decoration: none;
-            font-size: 14px;
+            font-size: 12px;
             font-weight: 500;
-            transition: color 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            height: 80px;
+            position: relative;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-family: 'Share Tech Mono', monospace;
         }
 
         .top-link:hover, .top-link.active {
             color: var(--cyan);
+            text-shadow: 0 0 8px var(--cyan-glow);
         }
         
-        .top-link.active {
-            border-bottom: 2px solid var(--cyan);
-            padding-bottom: 24px;
-            margin-bottom: -26px;
+        .top-link::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background-color: var(--cyan);
+            box-shadow: 0 -2px 10px var(--cyan);
+            transform: scaleX(0);
+            transition: transform 0.3s ease;
+            transform-origin: center;
+        }
+        .top-link:hover::after, .top-link.active::after {
+            transform: scaleX(1);
+        }
+
+        /* Right Section */
+        .nav-right {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .status-ind {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 11px;
+            color: var(--text-muted);
+            position: relative;
+            cursor: pointer;
+        }
+        .dot {
+            width: 8px;
+            height: 8px;
+            background-color: #00ff00;
+            border-radius: 50%;
+            box-shadow: 0 0 8px #00ff00;
+            animation: pulse-green 2s infinite;
+        }
+        @keyframes pulse-green {
+            0% { box-shadow: 0 0 5px #00ff00; }
+            50% { box-shadow: 0 0 15px #00ff00; }
+            100% { box-shadow: 0 0 5px #00ff00; }
+        }
+        .status-ind:hover::after {
+            content: 'All AI models active and inference running.';
+            position: absolute;
+            top: 30px;
+            right: 0;
+            background: #111;
+            border: 1px solid var(--cyan);
+            padding: 8px;
+            border-radius: 4px;
+            width: 180px;
+            color: var(--cyan);
+            z-index: 100;
+        }
+
+        .hardware-widget {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 10px;
+            color: var(--text-muted);
+            border-left: 1px solid var(--border-color);
+            padding-left: 15px;
+        }
+        .hw-val { color: var(--cyan); }
+
+        .nav-icons {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            color: var(--text-muted);
+            font-size: 16px;
+        }
+        .nav-icon {
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+        .nav-icon:hover {
+            color: var(--cyan);
+            text-shadow: 0 0 10px var(--cyan-glow);
+        }
+
+        .ai-core {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #fff 10%, var(--cyan) 40%, transparent 80%);
+            box-shadow: 0 0 15px var(--cyan);
+            animation: core-pulse 3s infinite alternate;
+            border: 1px solid rgba(0, 229, 255, 0.5);
+            margin-left: 10px;
+            cursor: pointer;
+        }
+        @keyframes core-pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 10px var(--cyan); }
+            100% { transform: scale(1.05); box-shadow: 0 0 20px var(--cyan); }
         }
 
         /* DASHBOARD GRID */
@@ -545,14 +695,51 @@
 
     <main class="main-content">
         <nav class="top-nav">
-            <div class="logo">NEURO-SYNC</div>
-            <div class="top-links">
-                <a href="#" class="top-link active" onclick="switchTab(this, 'view-live')">Live Feed</a>
-                <a href="#" class="top-link" onclick="switchTab(this, 'view-ml')">ML Pipeline</a>
-                <a href="#" class="top-link" onclick="switchTab(this, 'view-analytics')">Analytics</a>
-                <a href="#" class="top-link" onclick="switchTab(this, 'view-history')">History</a>
+            <div class="nav-left">
+                <div class="nav-logo-row">
+                    <div class="logo">🧠 NEURO-SYNC</div>
+                    <div class="logo-version">v4.2-STABLE</div>
+                </div>
+                <div class="logo-subtitle">Realtime Affective Intelligence System</div>
             </div>
-            <div style="color: var(--text-muted); font-size: 20px;">⚙️ 🔔</div>
+
+            <div class="top-links">
+                <a href="#" class="top-link active" onclick="switchTab(this, 'view-live')">
+                    🎥 Live Feed
+                </a>
+                <a href="#" class="top-link" onclick="switchTab(this, 'view-ml')">
+                    🔀 AI Pipeline
+                </a>
+                <a href="#" class="top-link" onclick="switchTab(this, 'view-analytics')">
+                    📊 Analytics
+                </a>
+                <a href="#" class="top-link" onclick="switchTab(this, 'view-latent')">
+                    🧊 Latent Space
+                </a>
+                <a href="#" class="top-link" onclick="switchTab(this, 'view-history')">
+                    ⏳ History
+                </a>
+                <a href="#" class="top-link" onclick="switchTab(this, 'view-docs')">
+                    🧪 Research
+                </a>
+            </div>
+
+            <div class="nav-right">
+                <div class="status-ind">
+                    <div class="dot"></div>
+                    ONLINE
+                </div>
+                <div class="hardware-widget">
+                    <div>CPU <span class="hw-val">41%</span></div>
+                    <div>GPU <span class="hw-val">28%</span></div>
+                    <div>FPS <span class="hw-val" id="nav-fps">29</span></div>
+                </div>
+                <div class="nav-icons">
+                    <div class="nav-icon" title="Notifications">🔔</div>
+                    <div class="nav-icon" title="Settings">⚙️</div>
+                </div>
+                <div class="ai-core" title="AI Core Running"></div>
+            </div>
         </nav>
 
         <div class="dashboard-container" id="view-live">
