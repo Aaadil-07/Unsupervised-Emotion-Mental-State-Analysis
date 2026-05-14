@@ -139,11 +139,15 @@ def predict_frame(frame):
             info["emotion"] = "Happy"
             
         # 2. Surprised (Mouth sharply opens, but not a smile)
-        elif mouth_open_inc > 0.08:
+        elif mouth_open_inc > 0.035:
             info["emotion"] = "Surprised"
             
-        # 3. Stressed / Angry (Brows tighten noticeably)
-        elif brow_increase > 0.01:
+        # 3. Sad (Frowning, lip corners dropped)
+        elif smile_energy < -0.015:
+            info["emotion"] = "Sad"
+            
+        # 4. Stressed / Angry (Brows tighten noticeably)
+        elif brow_increase > 0.008:
             info["emotion"] = "Stressed"
             
         # 4. Calm / Neutral (Face is resting, minimal deviation from baseline)
