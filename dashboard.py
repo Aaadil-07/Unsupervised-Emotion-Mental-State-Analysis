@@ -253,11 +253,19 @@ def stop_cam():
 @app.websocket("/ws/video")
 async def websocket_endpoint(websocket: WebSocket):
     await websocket.accept()
+    
+    # Fully reset on start so data is completely fresh
     S.running = True
     S.tracker = EmotionTracker(window_size=10)
+    S.baseline_geo = None
+    S.emotion = "—"
+    S.state = "—"
+    S.cluster = -1
+    S.alert = None
+    
     frames = 0
     last_t = time.time()
-    skip = 10  # Predict emotion once every 10 frames
+    skip = 3  # We can predict much faster now!
     last_bbox = None
     try:
         while True:
@@ -278,7 +286,7 @@ async def websocket_endpoint(websocket: WebSocket):
             info = None
             if S.fc % skip == 0:
                 info = predict_frame(frame)
-                last_bbox = get_face_bbox(frame)  # Only run heavy face detection here
+                last_bbox = get_face_bbox(frame)
                 
             if info:
                 S.emotion = info["emotion"]
@@ -289,31 +297,6 @@ async def websocket_endpoint(websocket: WebSocket):
                 S.tracker.update(S.cluster, S.emotion, S.state, S.alert)
                 S.emotion = S.tracker.smoothed_emotion()
 
-            bbox = last_bbox
-            emo_col_bgr = {
-                "Happy":     (0,   215, 255),
-                "Calm":      (80,  200, 80),
-                "Neutral":   (180, 180, 180),
-                "Sad":       (200, 80,  80),
-                "Stressed":  (50,  150, 255),
-                "Angry":     (50,  50,  244),
-                "Surprised": (200, 64,  224),
-            }.get(S.emotion, (0, 230, 180))
-
-            if bbox:
-                x, y, bw, bh = bbox
-                cv2.rectangle(frame, (x, y), (x+bw, y+bh), emo_col_bgr, 2, cv2.LINE_AA)
-
-            ov = frame.copy()
-            cv2.rectangle(ov, (0, 0), (frame.shape[1], 82), (0, 0, 0), -1)
-            cv2.addWeighted(ov, 0.55, frame, 0.45, 0, frame)
-            cv2.putText(frame, f"Emotion: {S.emotion}",
-                        (10, 24), cv2.FONT_HERSHEY_SIMPLEX,
-                        0.7, (0,230,180), 2, cv2.LINE_AA)
-            
-            _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 70])
-            b64_out = base64.b64encode(buffer).decode('utf-8')
-
             frames += 1
             now = time.time()
             if now - last_t >= 1.0:
@@ -321,9 +304,25 @@ async def websocket_endpoint(websocket: WebSocket):
                 frames = 0
                 last_t = now
 
-            await websocket.send_text("data:image/jpeg;base64," + b64_out)
+            # No heavy jpeg encoding! Just send JSON bounding box and state back!
+            resp = {
+                "emotion": S.emotion,
+                "state": S.state,
+                "cluster": int(S.cluster) if S.cluster != -1 else -1,
+                "alert": S.alert,
+                "fps": S.fps,
+                "bbox": [int(v) for v in last_bbox] if last_bbox is not None else None
+            }
+            await websocket.send_text(json.dumps(resp))
+            
     except WebSocketDisconnect:
+        # Fully reset when stopped so refresh/re-scan is fresh!
         S.running = False
+        S.baseline_geo = None
+        S.emotion = "—"
+        S.state = "—"
+        S.cluster = -1
+        S.alert = None
 
 def _to_py(obj):
     if isinstance(obj, np.generic): return obj.item()

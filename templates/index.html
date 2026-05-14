@@ -569,8 +569,9 @@
             <div class="grid-layout">
                 <div class="panel">
                     <div class="video-container">
-                        <img id="video-feed" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7" style="display: none;" />
-                        <div id="video-placeholder" style="color: #444; font-family: 'Share Tech Mono';">CAMERA INACTIVE</div>
+                        <video id="local-video" autoplay playsinline muted style="display: none; width: 100%; height: 100%; object-fit: cover;"></video>
+                        <canvas id="overlay-canvas" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; pointer-events: none; z-index: 1;"></canvas>
+                        <div id="video-placeholder" style="color: #444; font-family: 'Share Tech Mono'; z-index: 2;">CAMERA INACTIVE</div>
                         <div class="video-overlay">
                             <div id="status-badge" class="status-badge stopped">OFFLINE</div>
                             <div>FPS: <span id="fps-val">0</span> &nbsp;&nbsp; CLUSTER ID: <span id="cluster-val">#--</span></div>
@@ -795,8 +796,11 @@
         let pollInterval = null;
         let videoStream = null;
         let ws = null;
-        const hiddenVideo = document.createElement('video');
-        hiddenVideo.autoplay = true;
+        
+        const localVideo = document.getElementById('local-video');
+        const overlayCanvas = document.getElementById('overlay-canvas');
+        const overlayCtx = overlayCanvas.getContext('2d');
+        
         const hiddenCanvas = document.createElement('canvas');
         hiddenCanvas.width = 320;
         hiddenCanvas.height = 240;
@@ -808,7 +812,7 @@
             if (!isRunning) {
                 try {
                     videoStream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
-                    hiddenVideo.srcObject = videoStream;
+                    localVideo.srcObject = videoStream;
                     
                     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
                     const wsUrl = `${protocol}//${window.location.host}/ws/video`;
@@ -818,8 +822,12 @@
                         isRunning = true;
                         btn.textContent = 'STOP SCAN';
                         btn.classList.add('running');
-                        document.getElementById('video-feed').style.display = 'block';
+                        localVideo.style.display = 'block';
+                        overlayCanvas.style.display = 'block';
                         document.getElementById('video-placeholder').style.display = 'none';
+                        
+                        overlayCanvas.width = 640;
+                        overlayCanvas.height = 480;
                         
                         const badge = document.getElementById('status-badge');
                         badge.textContent = 'LIVE: SYNCED';
@@ -828,28 +836,57 @@
                         pollInterval = setInterval(fetchState, 500);
 
                         const sendFrame = () => {
-                            if (ws.readyState === WebSocket.OPEN && hiddenVideo.readyState >= 2 && isRunning) {
-                                ctx.drawImage(hiddenVideo, 0, 0, 320, 240);
-                                const dataUrl = hiddenCanvas.toDataURL('image/jpeg', 0.5); // lower resolution & quality
+                            if (ws.readyState === WebSocket.OPEN && localVideo.readyState >= 2 && isRunning) {
+                                ctx.drawImage(localVideo, 0, 0, 320, 240);
+                                const dataUrl = hiddenCanvas.toDataURL('image/jpeg', 0.5);
                                 ws.send(dataUrl);
                             }
                         };
                         
-                        // Trigger the first frame
-                        setTimeout(sendFrame, 500); // give camera a sec to warm up
+                        setTimeout(sendFrame, 500);
 
                         ws.onmessage = (event) => {
-                            document.getElementById('video-feed').src = event.data;
-                            // Only send the NEXT frame after we get the PREVIOUS one back to prevent lag/queuing
+                            try {
+                                const data = JSON.parse(event.data);
+                                
+                                // Draw native overlay at 30+ FPS without waiting for massive image downloads
+                                overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+                                
+                                // Top status bar
+                                overlayCtx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                                overlayCtx.fillRect(0, 0, overlayCanvas.width, 50);
+                                overlayCtx.font = "bold 22px 'Orbitron', sans-serif";
+                                overlayCtx.fillStyle = "rgb(0, 230, 180)";
+                                overlayCtx.fillText("Emotion: " + (data.emotion || "—"), 15, 34);
+                                
+                                // Face Bounding Box
+                                if (data.bbox && data.bbox.length === 4) {
+                                    // Bbox is from the 320x240 image, scale up to 640x480 canvas
+                                    let [x, y, w, h] = data.bbox;
+                                    x *= 2; y *= 2; w *= 2; h *= 2;
+                                    
+                                    const colors = {
+                                        "Happy":     "rgb(0, 215, 255)",
+                                        "Calm":      "rgb(80, 200, 80)",
+                                        "Neutral":   "rgb(180, 180, 180)",
+                                        "Sad":       "rgb(200, 80, 80)",
+                                        "Stressed":  "rgb(50, 150, 255)",
+                                        "Angry":     "rgb(50, 50, 244)",
+                                        "Surprised": "rgb(200, 64, 224)"
+                                    };
+                                    overlayCtx.strokeStyle = colors[data.emotion] || "rgb(0, 230, 180)";
+                                    overlayCtx.lineWidth = 3;
+                                    overlayCtx.strokeRect(x, y, w, h);
+                                }
+                            } catch(e) {}
+
                             if (isRunning) {
                                 requestAnimationFrame(sendFrame);
                             }
                         };
                     };
 
-                    ws.onclose = () => {
-                        stopScan();
-                    };
+                    ws.onclose = () => stopScan();
 
                 } catch (e) {
                     console.error(e);
@@ -867,8 +904,8 @@
             const btn = document.getElementById('toggle-scan-btn');
             btn.textContent = 'INITIATE SCAN';
             btn.classList.remove('running');
-            document.getElementById('video-feed').src = '';
-            document.getElementById('video-feed').style.display = 'none';
+            localVideo.style.display = 'none';
+            overlayCanvas.style.display = 'none';
             document.getElementById('video-placeholder').style.display = 'block';
             
             const badge = document.getElementById('status-badge');
@@ -885,6 +922,9 @@
                 ws.close();
                 ws = null;
             }
+            
+            // Re-fetch state immediately so it resets to blank
+            setTimeout(fetchState, 100);
         }
 
         async function fetchState() {
