@@ -793,44 +793,89 @@
 
         let isRunning = false;
         let pollInterval = null;
+        let videoStream = null;
+        let ws = null;
+        const hiddenVideo = document.createElement('video');
+        hiddenVideo.autoplay = true;
+        const hiddenCanvas = document.createElement('canvas');
+        hiddenCanvas.width = 640;
+        hiddenCanvas.height = 480;
+        const ctx = hiddenCanvas.getContext('2d');
 
         async function toggleScan() {
             const btn = document.getElementById('toggle-scan-btn');
             
             if (!isRunning) {
-                // Start
-                const res = await fetch('/start', {method: 'POST'});
-                if (res.ok) {
-                    isRunning = true;
-                    btn.textContent = 'STOP SCAN';
-                    btn.classList.add('running');
-                    document.getElementById('video-feed').style.display = 'block';
-                    document.getElementById('video-placeholder').style.display = 'none';
-                    document.getElementById('video-feed').src = '/video_feed?' + new Date().getTime();
+                try {
+                    videoStream = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
+                    hiddenVideo.srcObject = videoStream;
                     
-                    const badge = document.getElementById('status-badge');
-                    badge.textContent = 'LIVE: SYNCED';
-                    badge.classList.remove('stopped');
+                    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                    const wsUrl = `${protocol}//${window.location.host}/ws/video`;
+                    ws = new WebSocket(wsUrl);
 
-                    pollInterval = setInterval(fetchState, 500);
+                    ws.onopen = () => {
+                        isRunning = true;
+                        btn.textContent = 'STOP SCAN';
+                        btn.classList.add('running');
+                        document.getElementById('video-feed').style.display = 'block';
+                        document.getElementById('video-placeholder').style.display = 'none';
+                        
+                        const badge = document.getElementById('status-badge');
+                        badge.textContent = 'LIVE: SYNCED';
+                        badge.classList.remove('stopped');
+
+                        pollInterval = setInterval(() => {
+                            if (ws.readyState === WebSocket.OPEN && hiddenVideo.readyState >= 2) {
+                                ctx.drawImage(hiddenVideo, 0, 0, 640, 480);
+                                const dataUrl = hiddenCanvas.toDataURL('image/jpeg', 0.6);
+                                ws.send(dataUrl);
+                            }
+                            fetchState();
+                        }, 100);
+                    };
+
+                    ws.onmessage = (event) => {
+                        document.getElementById('video-feed').src = event.data;
+                    };
+
+                    ws.onclose = () => {
+                        stopScan();
+                    };
+
+                } catch (e) {
+                    console.error(e);
+                    alert("Could not access camera. Please ensure permissions are granted.");
                 }
             } else {
-                // Stop
-                const res = await fetch('/stop', {method: 'POST'});
-                if (res.ok) {
-                    isRunning = false;
-                    btn.textContent = 'INITIATE SCAN';
-                    btn.classList.remove('running');
-                    document.getElementById('video-feed').src = '';
-                    document.getElementById('video-feed').style.display = 'none';
-                    document.getElementById('video-placeholder').style.display = 'block';
-                    
-                    const badge = document.getElementById('status-badge');
-                    badge.textContent = 'OFFLINE';
-                    badge.classList.add('stopped');
-                    
-                    clearInterval(pollInterval);
-                }
+                stopScan();
+            }
+        }
+
+        function stopScan() {
+            if (!isRunning) return;
+            isRunning = false;
+            
+            const btn = document.getElementById('toggle-scan-btn');
+            btn.textContent = 'INITIATE SCAN';
+            btn.classList.remove('running');
+            document.getElementById('video-feed').src = '';
+            document.getElementById('video-feed').style.display = 'none';
+            document.getElementById('video-placeholder').style.display = 'block';
+            
+            const badge = document.getElementById('status-badge');
+            badge.textContent = 'OFFLINE';
+            badge.classList.add('stopped');
+            
+            clearInterval(pollInterval);
+            
+            if (videoStream) {
+                videoStream.getTracks().forEach(track => track.stop());
+                videoStream = null;
+            }
+            if (ws) {
+                ws.close();
+                ws = null;
             }
         }
 

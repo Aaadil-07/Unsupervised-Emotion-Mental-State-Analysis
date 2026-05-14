@@ -3,7 +3,7 @@ import time
 import cv2
 import base64
 import numpy as np
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -243,20 +243,85 @@ async def index(request: Request):
 
 @app.post("/start")
 def start_cam():
-    if not S.running:
-        S.cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
-        S.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-        S.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
-        S.cap.set(cv2.CAP_PROP_FPS, 60)
-        S.running = True
-        S.tracker = EmotionTracker(window_size=10)
-        threading.Thread(target=capture_loop, daemon=True).start()
     return {"status": "ok"}
 
 @app.post("/stop")
 def stop_cam():
     S.running = False
     return {"status": "ok"}
+
+@app.websocket("/ws/video")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    S.running = True
+    S.tracker = EmotionTracker(window_size=10)
+    frames = 0
+    last_t = time.time()
+    skip = 3
+    try:
+        while True:
+            data = await websocket.receive_text()
+            S.fc += 1
+            
+            if "," in data:
+                b64_data = data.split(",")[1]
+            else:
+                b64_data = data
+                
+            np_arr = np.frombuffer(base64.b64decode(b64_data), np.uint8)
+            frame = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+            
+            if frame is None:
+                continue
+
+            info = None
+            if S.fc % skip == 0:
+                info = predict_frame(frame)
+                
+            if info:
+                S.emotion = info["emotion"]
+                S.state   = info["mental_state"]
+                S.cluster = info["cluster"]
+                S.alert   = info["alert"]
+
+                S.tracker.update(S.cluster, S.emotion, S.state, S.alert)
+                S.emotion = S.tracker.smoothed_emotion()
+
+            bbox = get_face_bbox(frame)
+            emo_col_bgr = {
+                "Happy":     (0,   215, 255),
+                "Calm":      (80,  200, 80),
+                "Neutral":   (180, 180, 180),
+                "Sad":       (200, 80,  80),
+                "Stressed":  (50,  150, 255),
+                "Angry":     (50,  50,  244),
+                "Surprised": (200, 64,  224),
+            }.get(S.emotion, (0, 230, 180))
+
+            if bbox:
+                x, y, bw, bh = bbox
+                cv2.rectangle(frame, (x, y), (x+bw, y+bh), emo_col_bgr, 2, cv2.LINE_AA)
+
+            ov = frame.copy()
+            cv2.rectangle(ov, (0, 0), (frame.shape[1], 82), (0, 0, 0), -1)
+            cv2.addWeighted(ov, 0.55, frame, 0.45, 0, frame)
+            cv2.putText(frame, f"Emotion: {S.emotion}",
+                        (10, 24), cv2.FONT_HERSHEY_SIMPLEX,
+                        0.7, (0,230,180), 2, cv2.LINE_AA)
+            
+            _, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 70])
+            b64_out = base64.b64encode(buffer).decode('utf-8')
+
+            frames += 1
+            now = time.time()
+            if now - last_t >= 1.0:
+                S.fps = frames
+                frames = 0
+                last_t = now
+
+            await websocket.send_text("data:image/jpeg;base64," + b64_out)
+    except WebSocketDisconnect:
+        S.running = False
 
 def _to_py(obj):
     if isinstance(obj, np.generic): return obj.item()
