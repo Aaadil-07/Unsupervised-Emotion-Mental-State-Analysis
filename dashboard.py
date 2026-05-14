@@ -25,6 +25,7 @@ import matplotlib.pyplot as plt
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
+app.mount("/plots", StaticFiles(directory="plots"), name="plots")
 
 # GLOBAL STATE
 class AppState:
@@ -136,7 +137,7 @@ def predict_frame(frame):
         orig_emo = info["emotion"]
         
         # 1. Happy (Lip corners up + mouth open/bright)
-        if smile_energy > 0.035 or geo[16] >= 1:
+        if smile_energy > 0.03 or geo[16] >= 1:
             info["emotion"] = "Happy"
             
         # 2. Surprised (Mouth sharply opens, but not a smile)
@@ -144,7 +145,7 @@ def predict_frame(frame):
             info["emotion"] = "Surprised"
             
         # 3. Angry (Brows tighten noticeably)
-        elif brow_increase > 0.009:
+        elif brow_increase > 0.075:
             info["emotion"] = "Angry"
             
         # 4. Calm / Neutral (Face is resting, minimal deviation from baseline)
